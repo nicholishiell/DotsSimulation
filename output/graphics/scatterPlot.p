@@ -1,0 +1,28 @@
+set size square
+ 
+set terminal jpeg 
+set xrange [-50:50]
+set yrange [-50:50]
+system('pwd')
+fileList = system('ls ../rawData/time*')
+id=-1
+do for[file in fileList]{ 
+			set output sprintf('%s.jpg', file)
+
+#			plot file u 2:3:4 with points palette, \
+#			"../rawData/obstacles" using 1:2 pt 6
+		
+#			plot file pt style, \
+#			"../rawData/obstacles" using 1:2 pt 6
+
+			plot file u 2:3:4 with points palette
+#			plot file u 1:2 pt 7 
+
+#			plot file using 2:3 pt 7, \
+#			file using 2:3:1 with labels offset 1 notitle
+			
+}
+
+system('mv  ../rawData/*.jpg ../graphics/jpgs')
+
+

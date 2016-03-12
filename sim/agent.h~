@@ -1,0 +1,91 @@
+#ifndef AGENT_H
+#define AGENT_H
+
+#include <stdio.h>
+
+#include "controller.h"
+#include "Vector2d.h"
+#include "sensorContact.h"
+
+class Agent{
+ public:
+   
+  Agent(Vector2d * pVector, float ang, int id, Controller * c){
+    px0 = pVector->x;
+    py0 = pVector->y;
+    ang0 = ang;
+
+    distanceTravelled = 0.;
+
+    vx0 = 0.;
+    vy0 = 0.;
+     
+    teamID = id;
+    
+    aController = c;
+   
+    printf("Agent Created at (%f, %f).\n", px0, py0);
+  }
+  
+  ~Agent(){
+    printf("Agent Deleted.\n");
+  };
+
+  void UpdateSensors(std::vector<SensorContact*> contacts){
+
+    aController->UpdateSensors(contacts);
+    
+  };
+
+  void UpdateVelocity(){
+
+    Vector2d* velocityUpdate = aController->GetVelocityCommand();
+
+    vx0 = velocityUpdate->x;
+    vy0 = velocityUpdate->y;
+  }
+
+  void UpdatePosition(float dt){
+   
+    float px1 = px0 + vx0*dt;
+    float py1 = py0 + vy0*dt;
+   
+    distanceTravelled += sqrt(pow(vx0*dt, 2) + pow(vy0*dt, 2));
+
+    px0 = px1;
+    py0 = py1;
+    ang0 = ang1;
+  }
+
+  Vector2d* GetPosition(){
+    return new Vector2d(px0,py0);
+  }
+
+  std::vector<Vector2d*> GetLastBehaviourResponses(){
+    return aController->GetBehaviourResponseVectors();
+  }
+
+  int GetTeamID(){
+    return teamID;
+  }
+
+  float GetDistanceTravelled(){
+    
+    return distanceTravelled;
+  }
+
+ private:
+  
+  float px0, py0, ang0;
+  float px1, py1, ang1;
+ 
+  float vx0, vy0;
+
+  Controller * aController;
+
+  float distanceTravelled;
+
+  float bearingConstriant;
+  int teamID;
+};
+#endif

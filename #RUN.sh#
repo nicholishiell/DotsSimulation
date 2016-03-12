@@ -1,0 +1,22 @@
+clear
+echo "Removing old output files..."
+rm output/rawData/*
+rm output/graphics/jpgs/*
+
+echo "Running simulations..."
+cd sim
+g++ main.cpp -o dots
+./dots
+cd ..
+
+echo "Generating Plots..."
+cd output/graphics
+gnuplot scatterPlot.p
+gnuplot data_v_time.p
+cd jpgs
+
+echo "Rendering Video..."
+convert -delay 5 -loop 0 *.jpg myimage.gif
+
+echo "Run COMPLETE!!!"
+cd ../..

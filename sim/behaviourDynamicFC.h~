@@ -1,0 +1,198 @@
+#ifndef DYNAMIC_FC_H
+#define DYNAMIC_FC_H
+
+#include <time.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+
+#include "behaviour.h"
+
+#include "Vector2d.h"
+
+#include "sensorContact.h"
+
+class BehaviourDynamicFC: public Behaviour{
+
+ public:
+
+  BehaviourDynamicFC(float normAng = 0., float deadAheadZone = M_PI/16.){
+  
+
+    // Determine handedness
+    float bearingConstraint = 0.;
+    if(Random() < 0.5){
+      leftHanded = false;
+    }
+    else{
+      leftHanded = true;
+    }
+
+    //    bearingConstraint = normAng  - M_PI/2.; 
+    bearingConstraint = normAng + M_PI/2.; 
+
+    deadAheadAngularWidth = deadAheadZone;
+    
+    formationNormal = new Vector2d(normAng);
+    f = new Vector2d(bearingConstraint);
+    fPerp = f->GetPerp();
+     
+    staticGain = 1.0;
+    activationLevel = 0.; 
+
+    bias = 0.25 * M_PI * ( 1. + Random() );
+    if(leftHanded) bias *= -1.;
+
+    //printf("Norm Ang = %f\n",normAng);
+    //printf("form Norm = "); formationNormal->Print();
+    //printf("perp Norm = "); fPerp->Print();
+    
+  }
+
+  ~BehaviourDynamicFC(){};
+ 
+  // Returns a velocity vector
+  Vector2d * GetResponse(){
+
+    Vector2d * r = new Vector2d(targetBearing);
+         
+    //float mag = DotProduct(r, fPerp);
+    float mag = DotProduct(r, formationNormal);
+    if(mag<0.001) mag = 0.;
+    //if(!teamMemberAhead) mag = 1.0;
+
+    if(agentBehind and !agentAhead){
+      response = new Vector2d(0., 0.);    
+    }
+    else if(agentDeadAhead){
+      // Potential to flip handedness
+      //if(Random() <= 0.001) leftHanded = !leftHanded;
+
+      //if(leftHanded) u  =  ScalarMultipleVector(1., f);
+      //else u = ScalarMultipleVector(-1., f);
+      
+      //if(leftHanded) u = RotateVector(0.25*M_PI, formationNormal);
+      //else u = RotateVector(-0.25*M_PI, formationNormal); 
+
+      //u = RotateVector(bias, formationNormal); 
+      
+      //u = ScalarMultipleVector(mag, RotateVector(bias, formationNormal));
+      
+      //u = RotateVector(bias, formationNormal);
+
+      //u = formationNormal;
+      //response = ScalarMultipleVector(mag, formationNormal); 
+      
+      //response = ScalarMultipleVector(mag, f); 
+      if(leftHanded)response = f;
+      else response = ScalarMultipleVector(-1.,f);
+    }
+    else{ 
+      response = ScalarMultipleVector(mag, formationNormal); 
+      //if(teamMemberAhead) u = ScalarMultipleVector(mag, formationNormal);
+      //else u = formationNormal;
+    }
+
+    return response;
+  }
+
+  // Takes in a list of vectors giving the local position of neighbours
+  void UpdateStimulus( std::vector<SensorContact*> contacts){
+    // Reset Stimuli
+    agentBehind = false;
+    agentAhead = false;
+    agentDeadAhead = false;
+    teamMemberAhead = false;
+    targetBearing = 0.;
+
+    float largest = -2.;
+    int targetID  = -1;
+    char teamID = 0;
+
+    // Find teamID
+    for(int i = 0; i < contacts.size(); i++){
+      Vector2d * v = contacts[i]->GetVector();
+      float dist = v->GetNorm();
+      if(dist == 0.){
+	teamID = contacts[i]->GetType();
+
+      }
+    }
+
+    // Now evaluate the contacts
+    for(int i = 0; i < contacts.size(); i++){
+      Vector2d * v = contacts[i]->GetVector();
+     
+      // Skip zero vector
+      float dist = v->GetNorm();
+      if(dist == 0.) continue;
+      
+      // Get the current bearing vector
+      v->Normalize();
+      
+      // Project contact bearing on to formation normal
+      float dot = DotProduct(formationNormal, v); 
+        
+      //if(contacts[i]->GetType() != '0'){
+      //printf("%c\t%c\n", teamID,contacts[i]->GetType()); 
+      //continue;
+      //}
+  
+      if(dot < 0.) agentBehind = true;
+      else if( dot > deadAheadAngularWidth ) agentDeadAhead = true;
+      else agentAhead = true;
+
+      // This should be done only for contacts from the same team. 
+      if(contacts[i]->GetType() == teamID or true ){
+	if(dot > 0.) teamMemberAhead = true;
+	
+	// Find the bearing which is closest to formation Normal
+	if( dot > largest ){
+	  largest = dot;
+	  targetID = i;
+	}
+      }
+    
+    } // End of contact loop.  
+    
+    // Set the targetBearing
+    //printf("Target ID = %i\n", targetID);
+    //printf("agentBehind = %i\n", agentBehind);
+    //printf("agentAhead = %i\n", agentAhead);
+    //printf("agentDeadAhead = %i\n", agentDeadAhead);
+    if(targetID != -1) targetBearing = contacts[targetID]->GetVector()->GetAngle();
+ }
+  
+  // Display information to the screen.
+  void Print(){
+    printf("DynamicFC\t%f\n",activationLevel);
+  }
+
+ private:
+
+  int timeStamp;
+
+  // Stimuli variables
+  bool agentBehind;
+  bool agentAhead;
+  bool agentDeadAhead;
+  bool teamMemberAhead;
+  float targetBearing;
+
+  // Variables set during initialization
+  bool leftHanded;
+  float deadAheadAngularWidth;
+ 
+  Vector2d * f; 
+  Vector2d * fPerp; 
+  Vector2d * formationNormal;
+  
+  float bias;
+
+  // Random number
+  float Random(){
+    return rand()/(float)(RAND_MAX);
+  }
+
+};
+#endif
